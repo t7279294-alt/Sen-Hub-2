@@ -173,10 +173,61 @@ UserInputService.InputBegan:Connect(function(i,g) if g then return end; if jumpP
 -- JUMP SPEED
 UserInputService.JumpRequest:Connect(function() if jumpSpeedEnabled and canJump then local _,root=getCharacter(); if root then root.AssemblyLinearVelocity=Vector3.new(root.AssemblyLinearVelocity.X,50*jumpSpeedMultiplier,root.AssemblyLinearVelocity.Z); local jid=tick(); local isJ=true; activeJumpConnections[jid]=RunService.Heartbeat:Connect(function() local _,cr=getCharacter(); if not cr or not isJ then if activeJumpConnections[jid] then activeJumpConnections[jid]:Disconnect(); activeJumpConnections[jid]=nil end; return end; local yv=cr.AssemblyLinearVelocity.Y; if yv<0 then cr.AssemblyLinearVelocity=Vector3.new(cr.AssemblyLinearVelocity.X,yv*jumpSpeedMultiplier,cr.AssemblyLinearVelocity.Z) end; if math.abs(yv)<2 and yv>-5 then task.wait(0.1); if cr and math.abs(cr.AssemblyLinearVelocity.Y)<2 then isJ=false; if activeJumpConnections[jid] then activeJumpConnections[jid]:Disconnect(); activeJumpConnections[jid]=nil end end end end); canJump=false; task.delay(0.5,function() canJump=true end) end end end)
 
--- NAME CHANGER
-local function applyToTextObject(obj) if processedObjects[obj] then return end; if obj:IsA("TextLabel") or obj:IsA("TextBox") or obj:IsA("TextButton") then if string.find(string.lower(obj.Text),string.lower(plr.Name)) or string.find(string.lower(obj.Text),string.lower(plr.DisplayName)) then obj.Text=customName; processedObjects[obj]=true; obj:GetPropertyChangedSignal("Text"):Connect(function() if obj.Text~=customName and nameChangeEnabled then obj.Text=customName end end) end end end
-local function applyNameChange() if not nameChangeEnabled then return end; for _,v in pairs(plr.PlayerGui:GetDescendants()) do applyToTextObject(v) end end
-plr.PlayerGui.DescendantAdded:Connect(function(v) if nameChangeEnabled then task.defer(function() applyToTextObject(v) end) end end)
+-- NAME CHANGER (NO UI / CLEAN VERSION)
+
+local Players = game:GetService("Players")
+local plr = Players.LocalPlayer
+
+-- SETTINGS
+local nameChangeEnabled = true
+local customName = "NEW NAME HERE"
+
+-- INTERNAL TRACKING
+local processedObjects = {}
+local connections = {}
+
+local function applyToTextObject(obj)
+    if processedObjects[obj] then return end
+
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        local text = obj.Text or ""
+
+        if string.find(string.lower(text), string.lower(plr.Name))
+        or string.find(string.lower(text), string.lower(plr.DisplayName)) then
+
+            obj.Text = customName
+            processedObjects[obj] = true
+
+            if connections[obj] then
+                connections[obj]:Disconnect()
+            end
+
+            connections[obj] = obj:GetPropertyChangedSignal("Text"):Connect(function()
+                if nameChangeEnabled and obj.Text ~= customName then
+                    obj.Text = customName
+                end
+            end)
+        end
+    end
+end
+
+local function applyNameChange()
+    if not nameChangeEnabled then return end
+
+    for _, v in pairs(plr.PlayerGui:GetDescendants()) do
+        applyToTextObject(v)
+    end
+end
+
+applyNameChange()
+
+plr.PlayerGui.DescendantAdded:Connect(function(v)
+    if nameChangeEnabled then
+        task.defer(function()
+            applyToTextObject(v)
+        end)
+    end
+end)
 
 -- GRAV BOOST
 local function setupGravBoost(char) local root=char:WaitForChild("HumanoidRootPart"); root.Touched:Connect(function(hit) if not gravBoostOn or not boostRequested then return end; boostRequested=false; local oc=hit.Parent; local op=Players:GetPlayerFromCharacter(oc); if op and op~=plr then local h=oc:FindFirstChild("Head"); if h and h.CanCollide then local last=lastBoostTimes[op] or 0; if tick()-last>=gravBoostCooldown then local hum=char:FindFirstChild("Humanoid"); local md=hum and hum.MoveDirection or Vector3.zero; local bv=Instance.new("BodyVelocity"); bv.Velocity=Vector3.new(md.X*5,gravBoostPower,md.Z*5); bv.MaxForce=Vector3.new(9e9,9e9,9e9); bv.Parent=root; Debris:AddItem(bv,0.1); lastBoostTimes[op]=tick() end end end end) end
