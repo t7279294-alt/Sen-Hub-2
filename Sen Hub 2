@@ -42,12 +42,13 @@ local equipped = {}
 -- MESH/CLOTHING
 local MESH_ITEMS = {
     Coldstare={mesh="rbxassetid://5063577434",tex="rbxassetid://5047708728",par="UpperTorso",scl=Vector3.new(1,1,1),off=CFrame.new(0,0.15,0.65)*CFrame.Angles(0,math.rad(180),0)},
-    DesertVest={mesh="rbxassetid://11755494017",tex="rbxassetid://11755494031",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
+    Desert Vest={mesh="rbxassetid://11755494017",tex="rbxassetid://11755494031",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
     DRC={mesh="rbxassetid://6541224713",tex="rbxassetid://7833727918",par="Head",scl=Vector3.new(1.01,1.01,1.01),off=CFrame.new(0,0.91,0.11)*CFrame.Angles(0,math.rad(90),0)},
     Keff={mesh="rbxassetid://14156626934",tex="rbxassetid://14156781317",par="Head",scl=Vector3.new(0.9,0.9,0.9),off=CFrame.new(-0.06,0.38,0.1)*CFrame.Angles(0,math.rad(180),0)},
-    SeeingStars={mesh="rbxassetid://62139052",tex="rbxassetid://62139103",par="Head",scl=Vector3.new(1.05,1.05,1.05),off=CFrame.new(0,0.05,-0.45)},
+    Seeing Stars={mesh="rbxassetid://62139052",tex="rbxassetid://62139103",par="Head",scl=Vector3.new(1.05,1.05,1.05),off=CFrame.new(0,0.05,-0.45)},
     Subarctic={mesh="rbxassetid://39200112",tex="rbxassetid://39200088",par="Head",scl=Vector3.new(1.02,1.02,1.02),off=CFrame.new(0,0.27,0)},
-    TacticalVest={mesh="rbxassetid://11754584493",tex="rbxassetid://11754584535",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
+    Tactical Vest={mesh="rbxassetid://11754584493",tex="rbxassetid://11754584535",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
+    White towel={mesh="rbxassetid://6919149797",tex="rbxassetid://6919149853",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
 }
 local CLOTHING_ITEMS = {
     ["Black World Tour Shirt"]={type="Shirt",assetId=15335037852},["Pink World Tour Shirt"]={type="Shirt",assetId=15334978300},
