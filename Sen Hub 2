@@ -15,7 +15,7 @@ local head = character:WaitForChild("Head")
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({ Title = "Sen Hub CW", TabWidth = 160, Size = UDim2.fromOffset(580, 460), Acrylic = true, Theme = "Dark", MinimizeKey = Enum.KeyCode.RightControl })
-local Tabs = { Fire = Window:AddTab({ Title = "fire", Icon = "zap" }), Player = Window:AddTab({ Title = "player", Icon = "user" }), Emotes = Window:AddTab({ Title = "emotes", Icon = "smile" }), Items = Window:AddTab({ Title = "items", Icon = "star" }) }
+local Tabs = { Fire = Window:AddTab({ Title = "Park", Icon = "zap" }), Player = Window:AddTab({ Title = "player", Icon = "user" }), Emotes = Window:AddTab({ Title = "Emotes", Icon = "smile" }), Items = Window:AddTab({ Title = "items", Icon = "star" }) }
 
 -- STATE
 local legitPVEnabled, pullStrength, isPulling = false, 0.01, false
