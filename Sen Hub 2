@@ -295,7 +295,7 @@ Tabs.Player:AddSlider("TTBCooldown",{Title="ttb cooldown (seconds)",Default=5,Mi
 
 -- ============ EMOTES TAB ============
 Tabs.Emotes:AddParagraph({Title="emotes",Content="toggle emotes on/off"})
-local emoteList={{Name="Bop",Id=8028669437},{Name="BBS",Id=83690407262789},{Name="Hackers",Id=10714364213},{Name="Ball Spin",Id=14215798544},{Name="Gronk Spike",Id=13782932458},{Name="Griddy",Id=8028694339},{Name="Smith Knicks",Id=15312473847},{Name="Head Dribble",Id=133666867152446},{Name="Sturdy",Id=14215791622}}
+local emoteList={{Name="Bop",Id=8028669437},{Name="BBS",Id=83690407262789},{Name="Hackers",Id=10714364213},{Name="Ball Spin",Id=14215798544},{Name="Gronk Spike",Id=13782932458},{Name="Griddy",Id=8028694339},{Name="Smith Knicks",Id=15312473847},{Name="Head Dribble",Id=133666867152446},{Name="Sturdy",Id=14215791622},{Name="Mop",Id=14215807283},{Name="Samurai Slash",Id=15249657798},{Name="Dimension",Id=5618747341},{Name="Take The L",Id=2293391158}}
 local currentEmoteToggle=nil
 for _,emote in ipairs(emoteList) do local toggle=Tabs.Emotes:AddToggle("Emote"..emote.Name,{Title=emote.Name,Default=false}); toggle:OnChanged(function(v) if v then if currentEmoteToggle and currentEmoteToggle~=emote.Name then Fluent.Options["Emote"..currentEmoteToggle]:SetValue(false) end; currentEmoteToggle=emote.Name; LoadEmote(emote.Id) else if currentEmoteToggle==emote.Name then StopEmote(); currentEmoteToggle=nil end end end) end
 Tabs.Emotes:AddButton({Title="stop all emotes",Callback=function() StopEmote(); currentEmoteToggle=nil; for _,emote in ipairs(emoteList) do Fluent.Options["Emote"..emote.Name]:SetValue(false) end end})
