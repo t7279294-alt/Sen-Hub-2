@@ -1,3 +1,7 @@
+-- selftyz hub v4 — Fluent GUI
+-- SkyCloud features + selftyz originals merged
+-- PV from Kali Hub open source only
+
 local oldError = error; local oldWarn = warn; error = function(...) end; warn = function(...) end
 if getconnections then pcall(function() for _, c in pairs(getconnections(game:GetService("LogService").MessageOut)) do c:Disable() end end) end
 
@@ -42,13 +46,12 @@ local equipped = {}
 -- MESH/CLOTHING
 local MESH_ITEMS = {
     Coldstare={mesh="rbxassetid://5063577434",tex="rbxassetid://5047708728",par="UpperTorso",scl=Vector3.new(1,1,1),off=CFrame.new(0,0.15,0.65)*CFrame.Angles(0,math.rad(180),0)},
-    Desert Vest={mesh="rbxassetid://11755494017",tex="rbxassetid://11755494031",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
+    DesertVest={mesh="rbxassetid://11755494017",tex="rbxassetid://11755494031",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
     DRC={mesh="rbxassetid://6541224713",tex="rbxassetid://7833727918",par="Head",scl=Vector3.new(1.01,1.01,1.01),off=CFrame.new(0,0.91,0.11)*CFrame.Angles(0,math.rad(90),0)},
     Keff={mesh="rbxassetid://14156626934",tex="rbxassetid://14156781317",par="Head",scl=Vector3.new(0.9,0.9,0.9),off=CFrame.new(-0.06,0.38,0.1)*CFrame.Angles(0,math.rad(180),0)},
-    Seeing Stars={mesh="rbxassetid://62139052",tex="rbxassetid://62139103",par="Head",scl=Vector3.new(1.05,1.05,1.05),off=CFrame.new(0,0.05,-0.45)},
+    SeeingStars={mesh="rbxassetid://62139052",tex="rbxassetid://62139103",par="Head",scl=Vector3.new(1.05,1.05,1.05),off=CFrame.new(0,0.05,-0.45)},
     Subarctic={mesh="rbxassetid://39200112",tex="rbxassetid://39200088",par="Head",scl=Vector3.new(1.02,1.02,1.02),off=CFrame.new(0,0.27,0)},
-    Tactical Vest={mesh="rbxassetid://11754584493",tex="rbxassetid://11754584535",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
-    White towel={mesh="rbxassetid://6919149797",tex="rbxassetid://6919149853",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
+    TacticalVest={mesh="rbxassetid://11754584493",tex="rbxassetid://11754584535",par="UpperTorso",scl=Vector3.new(0.73,1.13,0.75),off=CFrame.new(0,0,-0.05)},
 }
 local CLOTHING_ITEMS = {
     ["Black World Tour Shirt"]={type="Shirt",assetId=15335037852},["Pink World Tour Shirt"]={type="Shirt",assetId=15334978300},
@@ -112,7 +115,13 @@ end
 local lastPull=0
 UserInputService.InputBegan:Connect(function(i,g) if g then return end; local isM1 = i.UserInputType==Enum.UserInputType.MouseButton1; local isR2 = i.UserInputType==Enum.UserInputType.Gamepad1 and i.KeyCode==Enum.KeyCode.ButtonR2; if (isM1 or isR2) and legitPVEnabled then isPulling=true end end)
 UserInputService.InputEnded:Connect(function(i) local isM1 = i.UserInputType==Enum.UserInputType.MouseButton1; local isR2 = i.UserInputType==Enum.UserInputType.Gamepad1 and i.KeyCode==Enum.KeyCode.ButtonR2; if isM1 or isR2 then isPulling=false end end)
-RunService.Heartbeat:Connect(function() if isPulling and legitPVEnabled then local n=tick(); if n-lastPull>=0.03 then pullToFootball(); lastPull=n end end end) 
+RunService.Heartbeat:Connect(function() if isPulling and legitPVEnabled then local n=tick(); if n-lastPull>=0.03 then pullToFootball(); lastPull=n end end end)
+
+-- EMOTE
+local EmoteSettings={["Fade In"]=0.1,["Fade Out"]=0.1,["Weight"]=1,["Speed"]=1,["Looped"]=true,["Stop Other Animations On Play"]=true}
+local CurrentTrack=nil
+local function LoadEmote(id) if CurrentTrack then CurrentTrack:Stop(EmoteSettings["Fade Out"]) end; local animId; local ok,result=pcall(function() return game:GetObjects("rbxassetid://"..tostring(id)) end); if ok and result and #result>0 then local a=result[1]; animId=a:IsA("Animation") and a.AnimationId or "rbxassetid://"..tostring(id) else animId="rbxassetid://"..tostring(id) end; local na=Instance.new("Animation"); na.AnimationId=animId; local nt=humanoid:LoadAnimation(na); nt.Priority=Enum.AnimationPriority.Action4; local w=EmoteSettings["Weight"]; if w==0 then w=0.001 end; if EmoteSettings["Stop Other Animations On Play"] then for _,t in pairs(humanoid.Animator:GetPlayingAnimationTracks()) do if t.Priority~=Enum.AnimationPriority.Action4 then t:Stop() end end end; nt:Play(EmoteSettings["Fade In"],w,EmoteSettings["Speed"]); CurrentTrack=nt; CurrentTrack.Priority=Enum.AnimationPriority.Action4; CurrentTrack.Looped=EmoteSettings["Looped"]; return nt end
+local function StopEmote() if CurrentTrack then pcall(function() CurrentTrack:Stop(EmoteSettings["Fade Out"]) end); CurrentTrack=nil end end
 
 -- HATS
 local function ResetHats() for _,obj in ipairs(EquippedHats) do if obj and obj.Parent then obj:Destroy() end end; table.clear(EquippedHats) end
@@ -130,7 +139,7 @@ local function EquipHat(assetId, hatType, attachTo)
     end
 end
 
--- ACCESSORIES
+-- SELFTYZ ACCESSORIES
 local function guessSlot(n) local nm=n:lower(); if nm:find("shade") or nm:find("glass") then return "FaceAccessory" end; if nm:find("hair") or nm:find("scene") or nm:find("lava") or nm:find("alt") then return "HairAccessory" end; if nm:find("chain") then return "NeckAccessory" end; return "HatAccessory" end
 local function equipMesh(name) if equipped[name] then return end; local d=MESH_ITEMS[name]; if not d then return end; local char=plr.Character; if not char then return end; local par=char:FindFirstChild(d.par); if not par and d.par=="UpperTorso" then par=char:FindFirstChild("Torso") end; if not par and d.par=="LowerTorso" then par=char:FindFirstChild("Torso") end; if not par then return end; local part=Instance.new("Part"); part.Name=name; part.Size=Vector3.new(1,1,1); part.CanCollide=false; part.Anchored=false; part.Massless=true; part.Parent=char; local m=Instance.new("SpecialMesh"); m.MeshType=Enum.MeshType.FileMesh; m.MeshId=d.mesh; m.TextureId=d.tex; m.Scale=d.scl; m.Parent=part; local w=Instance.new("Motor6D"); w.Part0=par; w.Part1=part; w.C0=d.off; w.Parent=par; part.CFrame=par.CFrame*d.off; equipped[name]={part} end
 local function equipClothing(name) if equipped[name] then return end; local d=CLOTHING_ITEMS[name]; if not d then return end; local char=plr.Character; if not char then return end; local hum=char:FindFirstChildOfClass("Humanoid"); local idStr=tostring(d.assetId); local parts={}; local ok,result=pcall(function() return game:GetObjects("rbxassetid://"..idStr) end); if ok and result then for _,obj in pairs(result) do local items={obj}; pcall(function() for _,c in pairs(obj:GetDescendants()) do table.insert(items,c) end end); for _,item in pairs(items) do if item:IsA("Shirt") and d.type=="Shirt" then local old=char:FindFirstChildOfClass("Shirt"); if old then old:Destroy() end; item.Parent=char; table.insert(parts,item); break elseif item:IsA("Pants") and d.type=="Pants" then local old=char:FindFirstChildOfClass("Pants"); if old then old:Destroy() end; item.Parent=char; table.insert(parts,item); break elseif (item:IsA("Accessory") or item:IsA("Accoutrement")) and d.type=="Accessory" then item.Parent=char; if hum then pcall(function() hum:AddAccessory(item) end) end; table.insert(parts,item); break end end; if #parts>0 then break end end end; if #parts==0 and d.type=="Accessory" then pcall(function() local desc=Instance.new("HumanoidDescription"); desc[guessSlot(name)]=idStr; local dummy=Players:CreateHumanoidModelFromDescription(desc,Enum.HumanoidRigType.R15,Enum.AssetTypeVerification.ClientOnly); desc:Destroy(); if dummy then for _,ch in pairs(dummy:GetChildren()) do if ch:IsA("Accessory") then ch.Parent=char; if hum then pcall(function() hum:AddAccessory(ch) end) end; table.insert(parts,ch) end end; dummy:Destroy() end end) end; if #parts==0 then if d.type=="Shirt" then local old=char:FindFirstChildOfClass("Shirt"); if old then old:Destroy() end; local s=Instance.new("Shirt"); s.ShirtTemplate="rbxassetid://"..idStr; s.Parent=char; table.insert(parts,s) elseif d.type=="Pants" then local old=char:FindFirstChildOfClass("Pants"); if old then old:Destroy() end; local p=Instance.new("Pants"); p.PantsTemplate="rbxassetid://"..idStr; p.Parent=char; table.insert(parts,p) end end; if #parts>0 then equipped[name]=parts end end
@@ -172,7 +181,7 @@ local function applyToTextObject(obj) if processedObjects[obj] then return end; 
 local function applyNameChange() if not nameChangeEnabled then return end; for _,v in pairs(plr.PlayerGui:GetDescendants()) do applyToTextObject(v) end end
 plr.PlayerGui.DescendantAdded:Connect(function(v) if nameChangeEnabled then task.defer(function() applyToTextObject(v) end) end end)
 
---  GRAV BOOST
+-- SELFTYZ: GRAV BOOST
 local function setupGravBoost(char) local root=char:WaitForChild("HumanoidRootPart"); root.Touched:Connect(function(hit) if not gravBoostOn or not boostRequested then return end; boostRequested=false; local oc=hit.Parent; local op=Players:GetPlayerFromCharacter(oc); if op and op~=plr then local h=oc:FindFirstChild("Head"); if h and h.CanCollide then local last=lastBoostTimes[op] or 0; if tick()-last>=gravBoostCooldown then local hum=char:FindFirstChild("Humanoid"); local md=hum and hum.MoveDirection or Vector3.zero; local bv=Instance.new("BodyVelocity"); bv.Velocity=Vector3.new(md.X*5,gravBoostPower,md.Z*5); bv.MaxForce=Vector3.new(9e9,9e9,9e9); bv.Parent=root; Debris:AddItem(bv,0.1); lastBoostTimes[op]=tick() end end end end) end
 
 -- SELFTYZ: STICKY HEAD
@@ -286,6 +295,13 @@ Tabs.Player:AddParagraph({Title="auto ttb (tag team boost)",Content="when you're
 Tabs.Player:AddToggle("AutoTTB",{Title="enable auto ttb",Default=false,Callback=function(v) autoTTBEnabled=v; if v and plr.Character then setupAutoTTB(plr.Character) end end})
 Tabs.Player:AddSlider("TTBPower",{Title="ttb boost power",Default=80,Min=30,Max=200,Rounding=1,Callback=function(v) ttbPower=v end})
 Tabs.Player:AddSlider("TTBCooldown",{Title="ttb cooldown (seconds)",Default=5,Min=1,Max=30,Rounding=1,Callback=function(v) ttbCooldown=v/10 end})
+
+-- ============ EMOTES TAB ============
+Tabs.Emotes:AddParagraph({Title="emotes",Content="toggle emotes on/off"})
+local emoteList={{Name="head dribble",Id=94302830213252},{Name="ccl",Id=92859581691366},{Name="bop",Id=78000690242935},{Name="ttl",Id=73593666217037},{Name="karem groove",Id=127717951280958},{Name="reanimated",Id=112989413190899},{Name="BBS",Id=83690407262789},{Name="HD",Id=133666867152446},{Name="Hackers",Id=10714364213}}
+local currentEmoteToggle=nil
+for _,emote in ipairs(emoteList) do local toggle=Tabs.Emotes:AddToggle("Emote"..emote.Name,{Title=emote.Name,Default=false}); toggle:OnChanged(function(v) if v then if currentEmoteToggle and currentEmoteToggle~=emote.Name then Fluent.Options["Emote"..currentEmoteToggle]:SetValue(false) end; currentEmoteToggle=emote.Name; LoadEmote(emote.Id) else if currentEmoteToggle==emote.Name then StopEmote(); currentEmoteToggle=nil end end end) end
+Tabs.Emotes:AddButton({Title="stop all emotes",Callback=function() StopEmote(); currentEmoteToggle=nil; for _,emote in ipairs(emoteList) do Fluent.Options["Emote"..emote.Name]:SetValue(false) end end})
 
 -- ============ ITEMS TAB ============
 Tabs.Items:AddParagraph({Title="hats",Content="click to equip"})
