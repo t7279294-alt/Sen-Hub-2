@@ -78,7 +78,7 @@ local Hats = {
     {Name="White CW Headphones",Id=97230132426750,Type="Headphones",Attach="Head"},
     {Name="Designer Keffyeh",Id=14157118140,Type="Normal",Attach="Head"},
     {Name="Royal Crown",Id=11453654,Type="Normal",Attach="Head"},
-    {Name="Black CW Headphones",Id=93874449800600,Type="Headphones",Attach="Head"},
+    {Name="Black CW Headphones",Id=1051545,Type="Headphones",Attach="Head"},
 }
 local HatOffsets = { [100235743603545]=CFrame.new(0,0.2,0)*CFrame.Angles(0,math.rad(180),0), [259424866]=CFrame.new(0,0.1,0), [7912127597]=CFrame.new(0,0.8,0.1)*CFrame.Angles(0,math.rad(90),0), [87396780155106]=CFrame.new(0,0.1,0)*CFrame.Angles(0,math.rad(180),0) }
 
