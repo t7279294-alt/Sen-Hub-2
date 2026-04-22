@@ -75,7 +75,7 @@ local Hats = {
     {Name="Midnight Commando",Id=259424866,Type="Commando",Attach="Head"},
     {Name="Arctic Commando",Id=87396780155106,Type="Commando",Attach="Head"},
     {Name="Blue CW Headphones",Id=1743903423,Type="Headphones",Attach="Head"},
-    {Name="White CW Headphones",Id=97230132426750,Type="Headphones",Attach="Head"},
+    {Name="White CW Headphones",Id=1051545,Type="Headphones",Attach="Head"},
     {Name="Designer Keffyeh",Id=14157118140,Type="Normal",Attach="Head"},
     {Name="Royal Crown",Id=11453654,Type="Normal",Attach="Head"},
     {Name="Black CW Headphones",Id=1051545,Type="Headphones",Attach="Head"},
