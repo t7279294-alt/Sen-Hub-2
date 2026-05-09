@@ -1,885 +1,888 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- ============================================================
+--  Sennn Hub  |  Rayfield UI
+-- ============================================================
 
--- Console Privacy
-print = function() end
-warn = function() end
-error = function() end
+local Rayfield = loadstring(game:HttpGet(
+    "https://sirius.menu/rayfield"
+))()
+
+local Players          = game:GetService("Players")
+local RunService       = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer      = Players.LocalPlayer
+
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local humanoid  = character:WaitForChild("Humanoid")
+local rootPart  = character:WaitForChild("HumanoidRootPart")
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid  = char:WaitForChild("Humanoid")
+    rootPart  = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- ============================================================
+--  WINDOW
+-- ============================================================
 
 local Window = Rayfield:CreateWindow({
-   Name = "Metoird Hub | Universal Football",
-   LoadingTitle = "Metoird Hub",
-   LoadingSubtitle = "by metorid",
-   ConfigurationSaving = {Enabled = true, FolderName = "MetoirdHub", FileName = "Config"},
-   KeySystem = false
+    Name             = "Sennn Hub",
+    Icon             = 0,
+    LoadingTitle     = "Sennn Hub",
+    LoadingSubtitle  = "By senkotuo",
+    Theme            = "Default",
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings   = false,
+    ConfigurationSaving    = { Enabled = false },
+    Discord                = { Enabled = false },
+    KeySystem              = false,
 })
 
--- [[ VARIABLES ]]
-local lp = game.Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
-local humanoid = char:WaitForChild("Humanoid")
-local root = char:WaitForChild("HumanoidRootPart")
+local MainTab       = Window:CreateTab("Main",       "gamepad-2")
+local VisualsTab    = Window:CreateTab("Visuals",    "palette")
+local AnimationsTab = Window:CreateTab("Animations", "music")
 
-local currentBannerID = "rbxassetid://13181356130"
-local originalBannerID = nil
-local equippedAccessories = {}
+-- ============================================================
+--  PULL VECTOR
+-- ============================================================
 
--- [[ SETTINGS ]]
-local hitboxEnabled = false
-local hitboxSize = 2
-local hitboxTransparency = 0.5
+local PV = { Enabled = false, Distance = 8, Strength = 0.01 }
 
-local boostEnabled = false
-local boostPower = 90
-
-local originalName = lp.Name
-local spoofedName = lp.Name
-local nameChangerEnabled = false
-local cachedNameLabels = {}
-local lastNameUpdate = 0
-
--- [[ FUNCTIONS ]]
-local function findNameLabels()
-    cachedNameLabels = {}
-    
-    -- Search character
-    for _, v in pairs(lp.Character:GetDescendants()) do
-        if v:IsA("TextLabel") then
-            if v.Name == "NameTag" or v.Name == "PlayerName" or v.Name == "Username" or 
-               (v.Text and v.Text == originalName) or (v.Text and v.Text == spoofedName) then
-                table.insert(cachedNameLabels, v)
-            end
+local function FindBall(rootPos)
+    local nearest, nearestDist = nil, PV.Distance
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name == "Football" and obj:IsA("BasePart") then
+            local dist = (obj.Position - rootPos).Magnitude
+            if dist < nearestDist then nearest, nearestDist = obj, dist end
         end
     end
-    
-    -- Search PlayerGui
-    local playerGui = lp:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _, v in pairs(playerGui:GetDescendants()) do
-            if v:IsA("TextLabel") and (v.Text == originalName or v.Text == spoofedName) then
-                table.insert(cachedNameLabels, v)
-            end
-        end
-    end
+    return nearest
 end
 
--- [[ TABS ]]
-local CompTab = Window:CreateTab("Comp")
-local EmotesTab = Window:CreateTab("Emotes")
-local ItemTab = Window:CreateTab("Items")
-local SpooferTab = Window:CreateTab("Spoofers")
-
--- [[ COMP TAB ]]
-CompTab:CreateSection("--- Hitbox ---")
-
-CompTab:CreateToggle({
-    Name = "Hitbox Enabled",
-    CurrentValue = false,
-    Callback = function(V)
-        hitboxEnabled = V
+local function InputHeld()
+    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return true end
+    local ok, state = pcall(function() return UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) end)
+    if ok and state then
+        for _, axis in ipairs(state) do
+            if axis.KeyCode == Enum.KeyCode.ButtonR2 and axis.Position.Z > 0.5 then return true end
+        end
     end
-})
-
-CompTab:CreateSlider({
-    Name = "Hitbox Size",
-    Range = {1, 30},
-    Increment = 1,
-    CurrentValue = 2,
-    Callback = function(V)
-        hitboxSize = V
-    end
-})
-
-CompTab:CreateSlider({
-    Name = "Hitbox Transparency",
-    Range = {0, 1},
-    Increment = 0.05,
-    CurrentValue = 0.5,
-    Callback = function(V)
-        hitboxTransparency = V
-    end
-})
-
-CompTab:CreateSection("--- Boost Tech ---")
-
-CompTab:CreateToggle({
-    Name = "Enable Boost",
-    CurrentValue = false,
-    Callback = function(V)
-        boostEnabled = V
-    end
-})
-
-CompTab:CreateSlider({
-    Name = "Boost Power",
-    Range = {50, 250},
-    Increment = 5,
-    CurrentValue = 90,
-    Callback = function(V)
-        boostPower = V
-    end
-})
-
--- [[ EMOTES TAB ]]
-EmotesTab:CreateSection("Animations")
-
-local function PlayEmote(id, isLooped)
-    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-        track:Stop()
-    end
-
-    local anim = Instance.new("Animation")
-    anim.AnimationId = "rbxassetid://" .. tostring(id)
-
-    local load = humanoid:LoadAnimation(anim)
-    load.Looped = isLooped
-    load:Play()
+    return false
 end
 
-EmotesTab:CreateButton({
-    Name = "BBS",
-    Callback = function()
-        PlayEmote(2178463446, true)
-    end
-})
-
-EmotesTab:CreateButton({
-    Name = "Bop",
-    Callback = function()
-        PlayEmote(8028669437, true)
-    end
-})
-
-EmotesTab:CreateButton({
-    Name = "Hackers",
-    Callback = function()
-        PlayEmote(10714364213, true)
-    end
-})
-
-EmotesTab:CreateButton({
-    Name = "HD",
-    Callback = function()
-        PlayEmote(133666867152446, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Ball Spin",
-    Callback = function()
-        PlayEmote(14215798544, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Gronk Spike",
-    Callback = function()
-        PlayEmote(13782932458, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Griddy",
-    Callback = function()
-        PlayEmote(8028694339, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Smith Knicks",
-    Callback = function()
-        PlayEmote(15312473847, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Sturdy",
-    Callback = function()
-        PlayEmote(14215791622, true)
-    end
-})
-EmotesTab:CreateButton({
-    Name = "Mop",
-    Callback = function()
-        PlayEmote(14215807283, true)
-    end
-})
-
-EmotesTab:CreateButton({
-    Name = "Stop All",
-    Callback = function()
-        for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-            track:Stop()
-        end
-    end
-})
-
--- ============================================================
--- [[ ITEMS TAB - COMPLETE SYSTEM FROM KAPY HUB ]]
--- ============================================================
-
-ItemTab:CreateSection("Accessories & Clothing")
-
-local Players = game:GetService("Players")
-local InsertService = game:GetService("InsertService")
-
-local character = lp.Character or lp.CharacterAdded:Wait()
-
-local equipped = {}
-local origShirtTemplate = nil
-local origPantsTemplate = nil
-
--- Store original clothing
-do
-    local s = character:FindFirstChildOfClass("Shirt")
-    local p = character:FindFirstChildOfClass("Pants")
-    if s then origShirtTemplate = s.ShirtTemplate end
-    if p then origPantsTemplate = p.PantsTemplate end
-end
-
--- ============================================================
--- COMPLETE MESH ITEMS DATABASE
--- ============================================================
-local MESH_ITEMS = {
-    Coldstare   = {mesh="rbxassetid://5028704943",  tex="rbxassetid://5047708728",  par="UpperTorso", scl=Vector3.new(1,1,1),          off=CFrame.new(0,0.15,0.65)*CFrame.Angles(0,math.rad(180),0)},
-    DesertVest  = {mesh="rbxassetid://11755494017", tex="rbxassetid://11755494031", par="UpperTorso", scl=Vector3.new(0.73,1.13,0.75), off=CFrame.new(0,0,-0.05)},
-    DRC         = {mesh="rbxassetid://6541224713",  tex="rbxassetid://7833727918",  par="Head",       scl=Vector3.new(1.01,1.01,1.01), off=CFrame.new(0,0.91,0.11)*CFrame.Angles(0,math.rad(90),0)},
-    Keff        = {mesh="rbxassetid://14156626934", tex="rbxassetid://14156781317", par="Head",       scl=Vector3.new(0.9,0.9,0.9),    off=CFrame.new(-0.06,0.38,0.1)*CFrame.Angles(0,math.rad(180),0)},
-    SeeingStars = {mesh="rbxassetid://62139052",    tex="rbxassetid://62139103",    par="Head",       scl=Vector3.new(1.05,1.05,1.05), off=CFrame.new(0,0.05,-0.45)},
-    Subarctic   = {mesh="rbxassetid://39200112",    tex="rbxassetid://39200088",    par="Head",       scl=Vector3.new(1.02,1.02,1.02), off=CFrame.new(0,0.27,0)},
-    TacticalVest= {mesh="rbxassetid://11754584493", tex="rbxassetid://11754584535", par="UpperTorso", scl=Vector3.new(0.73,1.13,0.75), off=CFrame.new(0,0,-0.05)},
-    WhiteTowel  ={mesh="rbxassetid://6919149797",   tex="rbxassetid://6923948446",   par="LowerTorso", scl=Vector3.new(1,1,0.75),          off=CFrame.new(0.77,-0.82,0.02)*CFrame.Angles(0,math.rad(2000),0)},
-}
-
--- ============================================================
--- COMPLETE CLOTHING ITEMS DATABASE
--- ============================================================
-local CLOTHING_ITEMS = {
-    ["Black World Tour Shirt"]  = {type="Shirt",     assetId=15335037852},
-    ["Pink World Tour Shirt"]   = {type="Shirt",     assetId=15334978300},
-    ["King Shirt"]              = {type="Shirt",     assetId=6296265575},
-    ["King Pants"]              = {type="Pants",     assetId=10725550576},
-    ["Black Bandana Shorts"]    = {type="Pants",     assetId=15020463274},
-    ["Ushanka"]                 = {type="Accessory", assetId=12710415119},
-    ["White CW Set"]            = {type="Accessory", assetId=97230132426750},
-    ["Black CW Headphones"]     = {type="Accessory", assetId=93874449800600},
-    ["Black CW Shades"]         = {type="Accessory", assetId=111757672542159},
-    ["Star Chain"]              = {type="Accessory", assetId=12269196297},
-    ["LavaSceneHair"]           = {type="Accessory", assetId=113527009413079},
-    ["Pink Scene"]                = {type="Accessory", assetId=84430461054841},
-}
-
--- ============================================================
--- SLOT DETECTION
--- ============================================================
-local function guessSlot(name)
-    local nm = name:lower()
-    if nm:find("face") or nm:find("shade") or nm:find("glass") then return "FaceAccessory" end
-    if nm:find("hair") or nm:find("scene") or nm:find("wig") or nm:find("lava") or nm:find("alt") then return "HairAccessory" end
-    if nm:find("neck") or nm:find("chain") or nm:find("necklace") then return "NeckAccessory" end
-    if nm:find("back") or nm:find("cape") or nm:find("wing") then return "BackAccessory" end
-    if nm:find("waist") or nm:find("belt") then return "WaistAccessory" end
-    if nm:find("shoulder") then return "ShouldersAccessory" end
-    if nm:find("front") then return "FrontAccessory" end
-    return "HatAccessory"
-end
-
--- ============================================================
--- EQUIP MESH ITEM
--- ============================================================
-local function equipMeshItem(name)
-    if equipped[name] then return end
-    local d = MESH_ITEMS[name]
-    if not d then return end
-    
-    local char = lp.Character
-    if not char then return end
-    
-    -- R15/R6 fallback
-    local par = char:FindFirstChild(d.par)
-    if not par and d.par == "UpperTorso" then par = char:FindFirstChild("Torso") end
-    if not par and d.par == "LowerTorso" then par = char:FindFirstChild("Torso") end
-    if not par then return end
-    
-    local part = Instance.new("Part")
-    part.Name = name
-    part.Size = Vector3.new(1,1,1)
-    part.CanCollide = false
-    part.Anchored = false
-    part.Massless = true
-    part.Parent = char
-    
-    local mesh = Instance.new("SpecialMesh")
-    mesh.MeshType = Enum.MeshType.FileMesh
-    mesh.MeshId = d.mesh
-    mesh.TextureId = d.tex
-    mesh.Scale = d.scl
-    mesh.Parent = part
-    
-    local weld = Instance.new("Motor6D")
-    weld.Part0 = par
-    weld.Part1 = part
-    weld.C0 = d.off
-    weld.Parent = par
-    
-    part.CFrame = par.CFrame * d.off
-    
-    equipped[name] = {part}
-end
-
--- ============================================================
--- EQUIP CLOTHING (ALL 7 METHODS FROM KAPY HUB)
--- ============================================================
-local function equipClothing(name)
-    if equipped[name] then return end
-    local d = CLOTHING_ITEMS[name]
-    if not d then return end
-    
-    local char = lp.Character
-    if not char then return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local idStr = tostring(d.assetId)
-    
-    local applied = false
-    local appliedParts = {}
-    
-    -- Helper function to try applying objects
-    local function tryApplyObjects(objects, label)
-        if not objects then return false end
-        local allItems = {}
-        for _, obj in pairs(objects) do
-            table.insert(allItems, obj)
-            pcall(function()
-                for _, child in pairs(obj:GetDescendants()) do
-                    table.insert(allItems, child)
-                end
-            end)
-        end
-        
-        for _, item in pairs(allItems) do
-            -- Classic Shirt
-            if item:IsA("Shirt") and (d.type == "Shirt" or d.type == "Accessory") then
-                local old = char:FindFirstChildOfClass("Shirt")
-                if old then old:Destroy() end
-                item.Parent = char
-                table.insert(appliedParts, item)
-                return true
-            end
-            
-            -- Classic Pants
-            if item:IsA("Pants") and (d.type == "Pants" or d.type == "Accessory") then
-                local old = char:FindFirstChildOfClass("Pants")
-                if old then old:Destroy() end
-                item.Parent = char
-                table.insert(appliedParts, item)
-                return true
-            end
-            
-            -- T-Shirt
-            if item:IsA("ShirtGraphic") then
-                local old = char:FindFirstChildOfClass("ShirtGraphic")
-                if old then old:Destroy() end
-                item.Parent = char
-                table.insert(appliedParts, item)
-                return true
-            end
-            
-            -- Accessory
-            if item:IsA("Accessory") or item:IsA("Accoutrement") then
-                item.Parent = char
-                if hum then
-                    pcall(function() hum:AddAccessory(item) end)
-                end
-                table.insert(appliedParts, item)
-                return true
-            end
-        end
-        return false
-    end
-    
-    -- METHOD 1: game:GetObjects
-    if not applied then
-        local ok, result = pcall(function()
-            return game:GetObjects("rbxassetid://"..idStr)
-        end)
-        if ok and result and #result > 0 then
-            applied = tryApplyObjects(result, "GetObjects")
-        end
-    end
-    
-    -- METHOD 2: InsertService:LoadAsset
-    if not applied then
-        local ok2, model = pcall(function()
-            return InsertService:LoadAsset(d.assetId)
-        end)
-        if ok2 and model then
-            applied = tryApplyObjects({model}, "InsertService")
-            if model and model.Parent then pcall(function() model:Destroy() end) end
-        end
-    end
-    
-    -- METHOD 3: Dummy model with CreateHumanoidModelFromDescription
-    if not applied and d.type == "Accessory" then
-        local ok3 = pcall(function()
-            local desc = Instance.new("HumanoidDescription")
-            local slot = guessSlot(name)
-            desc[slot] = idStr
-            
-            local dummyModel = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15, Enum.AssetTypeVerification.ClientOnly)
-            
-            if not dummyModel then return end
-            
-            local foundAny = false
-            for _, child in pairs(dummyModel:GetChildren()) do
-                if child:IsA("Accessory") or child:IsA("Accoutrement") then
-                    child.Parent = char
-                    if hum then
-                        pcall(function() hum:AddAccessory(child) end)
-                    end
-                    table.insert(appliedParts, child)
-                    foundAny = true
-                end
-            end
-            
-            dummyModel:Destroy()
-            
-            if foundAny then
-                applied = true
-            end
-        end)
-    end
-    
-    -- METHOD 4: ApplyDescription with ClientOnly
-    if not applied and d.type == "Accessory" and hum then
-        local ok4 = pcall(function()
-            local desc = hum:GetAppliedDescription()
-            if not desc then return end
-            
-            local slot = guessSlot(name)
-            local current = desc[slot] or ""
-            desc[slot] = current ~= "" and (current..","..idStr) or idStr
-            
-            hum:ApplyDescription(desc, Enum.AssetTypeVerification.ClientOnly)
-        end)
-        
-        if ok4 then
-            applied = true
-            appliedParts = {"desc_"..name.."_"..idStr}
-        end
-    end
-    
-    -- METHOD 5: ApplyDescriptionReset
-    if not applied and d.type == "Accessory" and hum then
-        local ok5 = pcall(function()
-            local desc = hum:GetAppliedDescription()
-            if not desc then return end
-            
-            local slot = guessSlot(name)
-            local current = desc[slot] or ""
-            desc[slot] = current ~= "" and (current..","..idStr) or idStr
-            
-            hum:ApplyDescriptionReset(desc, Enum.AssetTypeVerification.ClientOnly)
-        end)
-        
-        if ok5 then
-            applied = true
-            appliedParts = {"desc_"..name.."_"..idStr}
-        end
-    end
-    
-    -- METHOD 6: Direct template (shirts/pants)
-    if not applied then
-        if d.type == "Shirt" then
-            local old = char:FindFirstChildOfClass("Shirt")
-            if old then old:Destroy() end
-            
-            local s = Instance.new("Shirt")
-            s.Name = name
-            s.ShirtTemplate = "rbxassetid://"..idStr
-            s.Parent = char
-            
-            table.insert(appliedParts, s)
-            applied = true
-            
-        elseif d.type == "Pants" then
-            local old = char:FindFirstChildOfClass("Pants")
-            if old then old:Destroy() end
-            
-            local p = Instance.new("Pants")
-            p.Name = name
-            p.PantsTemplate = "rbxassetid://"..idStr
-            p.Parent = char
-            
-            table.insert(appliedParts, p)
-            applied = true
-        end
-    end
-    
-    -- METHOD 7: Brute force all slots
-    if not applied and d.type == "Accessory" then
-        local allSlots = {
-            "HairAccessory","HatAccessory","FaceAccessory",
-            "NeckAccessory","BackAccessory","FrontAccessory",
-            "ShouldersAccessory","WaistAccessory"
-        }
-        
-        for _, slot in ipairs(allSlots) do
-            if applied then break end
-            
-            pcall(function()
-                local desc = Instance.new("HumanoidDescription")
-                desc[slot] = idStr
-                
-                local dummy = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15, Enum.AssetTypeVerification.ClientOnly)
-                
-                if dummy then
-                    for _, ch in pairs(dummy:GetChildren()) do
-                        if ch:IsA("Accessory") or ch:IsA("Accoutrement") then
-                            ch.Parent = char
-                            if hum then pcall(function() hum:AddAccessory(ch) end) end
-                            table.insert(appliedParts, ch)
-                            applied = true
-                        end
-                    end
-                    dummy:Destroy()
-                end
-            end)
-        end
-    end
-    
-    if #appliedParts > 0 then
-        equipped[name] = appliedParts
-    end
-end
-
--- ============================================================
--- UNEQUIP ITEM
--- ============================================================
-local function unequipItem(name)
-    if not equipped[name] then return end
-    
-    local parts = equipped[name]
-    local hadShirt, hadPants = false, false
-    local descAppliedId = nil
-    
-    for _, p in ipairs(parts) do
-        if type(p) == "string" and p:sub(1,5) == "desc_" then
-            descAppliedId = p:match("_(%d+)$")
-        elseif typeof(p) == "Instance" and p.Parent then
-            if p:IsA("Shirt") then hadShirt = true end
-            if p:IsA("Pants") then hadPants = true end
-            p:Destroy()
-        end
-    end
-    
-    equipped[name] = nil
-    
-    local char = lp.Character
-    if not char then return end
-    
-    -- Restore original clothing
-    if hadShirt and origShirtTemplate then
-        if not char:FindFirstChildOfClass("Shirt") then
-            local s = Instance.new("Shirt")
-            s.ShirtTemplate = origShirtTemplate
-            s.Parent = char
-        end
-    end
-    
-    if hadPants and origPantsTemplate then
-        if not char:FindFirstChildOfClass("Pants") then
-            local p = Instance.new("Pants")
-            p.PantsTemplate = origPantsTemplate
-            p.Parent = char
-        end
-    end
-    
-    -- Remove HumanoidDescription-applied accessory
-    if descAppliedId then
-        local hum2 = char:FindFirstChildOfClass("Humanoid")
-        
-        -- Remove actual accessory
-        for _, child in pairs(char:GetChildren()) do
-            if child:IsA("Accessory") or child:IsA("Accoutrement") then
-                local handle = child:FindFirstChild("Handle")
-                if handle then
-                    local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-                    if mesh and mesh.MeshId and mesh.MeshId:find(descAppliedId) then
-                        child:Destroy()
-                    end
-                end
-            end
-        end
-        
-        -- Try description removal
-        if hum2 then
-            pcall(function()
-                local desc = hum2:GetAppliedDescription()
-                if not desc then return end
-                
-                local slots = {
-                    "HatAccessory","HairAccessory","FaceAccessory",
-                    "NeckAccessory","ShouldersAccessory","FrontAccessory",
-                    "BackAccessory","WaistAccessory"
-                }
-                
-                for _, slot in ipairs(slots) do
-                    local val = desc[slot] or ""
-                    if val:find(descAppliedId) then
-                        local ids = {}
-                        for id in val:gmatch("[^,]+") do
-                            if id:gsub("%s","") ~= descAppliedId then
-                                table.insert(ids, id)
-                            end
-                        end
-                        desc[slot] = table.concat(ids, ",")
-                    end
-                end
-                
-                hum2:ApplyDescription(desc, Enum.AssetTypeVerification.ClientOnly)
-            end)
-        end
-    end
-end
-
--- ============================================================
--- EQUIP/UNEQUIP WRAPPER
--- ============================================================
-local function equipItem(name)
-    if MESH_ITEMS[name] then
-        equipMeshItem(name)
-    elseif CLOTHING_ITEMS[name] then
-        equipClothing(name)
-    end
-end
-
--- ============================================================
--- CREATE TOGGLES FOR ALL ITEMS
--- ============================================================
-local allNames = {}
-
-for k in pairs(MESH_ITEMS) do table.insert(allNames, k) end
-for k in pairs(CLOTHING_ITEMS) do table.insert(allNames, k) end
-
-table.sort(allNames)
-
-for _, name in ipairs(allNames) do
-    ItemTab:CreateToggle({
-        Name = name,
-        CurrentValue = false,
-        Callback = function(v)
-            if v then
-                equipItem(name)
-            else
-                unequipItem(name)
-            end
-        end
-    })
-end
-
--- ============================================================
--- CUSTOM ID LOADER
--- ============================================================
-ItemTab:CreateSection("Custom Catalog Loader")
-
-local customIdVal = 0
-
-ItemTab:CreateInput({
-    Name = "Catalog/Asset ID",
-    PlaceholderText = "e.g. 12710415119",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        customIdVal = tonumber(text) or 0
-    end
-})
-
-ItemTab:CreateButton({
-    Name = "Load as Hat",
-    Callback = function()
-        if customIdVal <= 0 then return end
-        local cName = "Custom_"..tostring(customIdVal)
-        CLOTHING_ITEMS[cName] = {type="Accessory", assetId=customIdVal}
-        equipClothing(cName)
-    end
-})
-
-ItemTab:CreateButton({
-    Name = "Load as Shirt",
-    Callback = function()
-        if customIdVal <= 0 then return end
-        local cName = "CustomShirt_"..tostring(customIdVal)
-        CLOTHING_ITEMS[cName] = {type="Shirt", assetId=customIdVal}
-        equipClothing(cName)
-    end
-})
-
-ItemTab:CreateButton({
-    Name = "Load as Pants",
-    Callback = function()
-        if customIdVal <= 0 then return end
-        local cName = "CustomPants_"..tostring(customIdVal)
-        CLOTHING_ITEMS[cName] = {type="Pants", assetId=customIdVal}
-        equipClothing(cName)
-    end
-})
-
-ItemTab:CreateButton({
-    Name = "Unequip All",
-    Callback = function()
-        local toRemove = {}
-        for n in pairs(equipped) do table.insert(toRemove, n) end
-        for _, n in ipairs(toRemove) do unequipItem(n) end
-    end
-})
-
--- ============================================================
--- CHARACTER RESPAWN HANDLER
--- ============================================================
-lp.CharacterAdded:Connect(function(newChar)
-    task.wait(1)
-    character = newChar
-    humanoid = newChar:WaitForChild("Humanoid")
-    root = newChar:WaitForChild("HumanoidRootPart")
-    
-    -- Store new original clothing
-    local s = newChar:FindFirstChildOfClass("Shirt")
-    local p = newChar:FindFirstChildOfClass("Pants")
-    if s then origShirtTemplate = s.ShirtTemplate end
-    if p then origPantsTemplate = p.PantsTemplate end
-    
-    -- Re-equip items
-    local wasOn = {}
-    for k in pairs(equipped) do table.insert(wasOn, k) end
-    
-    for k in pairs(equipped) do
-        local parts = equipped[k]
-        if parts then
-            for _, pt in ipairs(parts) do
-                if typeof(pt) == "Instance" and pt.Parent then
-                    pt:Destroy()
-                end
-            end
-        end
-        equipped[k] = nil
-    end
-    
-    for _, k in ipairs(wasOn) do
-        equipItem(k)
+RunService.Heartbeat:Connect(function()
+    if not PV.Enabled then return end
+    if not InputHeld() then return end
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local hum  = character and character:FindFirstChild("Humanoid")
+    if not root or not hum or hum.Health <= 0 then return end
+    local ball = FindBall(root.Position)
+    if ball then
+        root.CFrame = CFrame.new(root.CFrame.Position:Lerp(ball.Position, PV.Strength), ball.Position)
     end
 end)
 
--- [[ SPOOFER TAB ]]
-SpooferTab:CreateSection("Name Changer")
+local PVSection = MainTab:CreateSection("Pull Vector")
 
-SpooferTab:CreateInput({
-    Name = "Custom Name",
-    PlaceholderText = "Enter name...",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        spoofedName = text
-    end
+MainTab:CreateToggle({
+    Name         = "Pull Vector",
+    CurrentValue = false,
+    Flag         = "PullToggle",
+    Callback     = function(s) PV.Enabled = s end,
 })
 
-SpooferTab:CreateButton({
-    Name = "Apply Name",
-    Callback = function()
-        nameChangerEnabled = true
-        findNameLabels()
-        Rayfield:Notify({
-            Title = "Name Changer",
-            Content = "Name changed to: " .. spoofedName,
-            Duration = 3
-        })
-    end
+MainTab:CreateSlider({
+    Name         = "Pull Distance",
+    Range        = { 0.01, 15 },
+    Increment    = 1,
+    CurrentValue = 8,
+    Flag         = "PullDistance",
+    Callback     = function(v) PV.Distance = v end,
 })
 
-SpooferTab:CreateButton({
-    Name = "Reset Name",
-    Callback = function()
-        spoofedName = originalName
-        nameChangerEnabled = false
-        cachedNameLabels = {}
-        Rayfield:Notify({
-            Title = "Name Changer",
-            Content = "Name reset to original",
-            Duration = 3
-        })
-    end
+MainTab:CreateSlider({
+    Name         = "Pull Strength",
+    Range        = { 0.01, 10 },
+    Increment    = 1,
+    CurrentValue = 1,
+    Flag         = "PullStrength",
+    Callback     = function(v) PV.Strength = v * 0.01 end,
 })
 
-SpooferTab:CreateSection("Banners")
+-- ============================================================
+--  LOOP SPEED
+-- ============================================================
 
-local bans = {
-    ["TikTok"] = "14308515186",
-    ["YT"] = "13181356130",
-    ["Twitch"] = "13284240977",
-    ["Global"] = "13223858189",
-    ["50 Million Rap"] = "13200847176",
-    ["All Star"] = "14381436809",
-    ["Win As Huskies"] = "14124075334",
-    ["Staff"] = "13284239964"
-}
+local LoopSpeed = { Enabled = false, Speed = 16 }
+local loopSpeedConn = nil
 
-for n, id in pairs(bans) do
-    SpooferTab:CreateButton({
-        Name = n,
-        Callback = function()
-            currentBannerID = "rbxassetid://" .. id
-        end
-    })
+local function applyLoopSpeed()
+    if loopSpeedConn then loopSpeedConn:Disconnect() loopSpeedConn = nil end
+    if not LoopSpeed.Enabled then return end
+    loopSpeedConn = RunService.Heartbeat:Connect(function()
+        local hum = character and character:FindFirstChild("Humanoid")
+        if hum then hum.WalkSpeed = LoopSpeed.Speed end
+    end)
 end
 
-SpooferTab:CreateButton({
-    Name = "Reset Banner",
-    Callback = function()
-        if originalBannerID then
-            currentBannerID = originalBannerID
-        end
-    end
+LocalPlayer.CharacterAdded:Connect(function()
+    if LoopSpeed.Enabled then applyLoopSpeed() end
+end)
+
+MainTab:CreateSection("Loop Speed")
+
+MainTab:CreateToggle({
+    Name         = "Loop Speed",
+    CurrentValue = false,
+    Flag         = "LoopSpeedToggle",
+    Callback     = function(s) LoopSpeed.Enabled = s applyLoopSpeed() end,
 })
 
--- [[ HEARTBEAT LOOP ]]
-game:GetService("RunService").Heartbeat:Connect(function()
-    if not root or not lp.Character then return end
+MainTab:CreateSlider({
+    Name         = "Speed",
+    Range        = { 1, 100 },
+    Increment    = 1,
+    CurrentValue = 16,
+    Flag         = "LoopSpeedSlider",
+    Callback     = function(v) LoopSpeed.Speed = v end,
+})
 
-    -- Hitbox
-    if hitboxEnabled then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = p.Character.HumanoidRootPart
-                hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-                hrp.Transparency = hitboxTransparency
-                hrp.Material = Enum.Material.ForceField
+-- ============================================================
+--  BALLBOX
+-- ============================================================
+
+local ballboxEnabled       = false
+local ballboxSize          = 4
+local ballboxTarget        = nil
+local ballboxOrigBallTrans = nil
+local ballboxParts         = {}
+local ballboxConns         = {}
+local ballboxThread        = nil
+local cachedFootball       = nil
+local footballCacheTimer   = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    footballCacheTimer = footballCacheTimer + dt
+    if footballCacheTimer < 0.3 then return end
+    footballCacheTimer = 0
+    local found = nil
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Football" then found = obj break end
+    end
+    cachedFootball = (found and found.Parent) and found or nil
+end)
+
+local function isBallLoose(ball)
+    if not ball or not ball.Parent then return false end
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            if root and (root.Position - ball.Position).Magnitude < 3.5 then
+                if (ball.AssemblyLinearVelocity - root.AssemblyLinearVelocity).Magnitude < 5 then return false end
+            end
+            for _, child in pairs(ball:GetChildren()) do
+                if child:IsA("WeldConstraint") or child:IsA("Weld") or child:IsA("Motor6D") then
+                    for _, cp in pairs(player.Character:GetDescendants()) do
+                        if cp:IsA("BasePart") and (child.Part0 == cp or child.Part1 == cp) then return false end
+                    end
+                end
             end
         end
     end
+    return true
+end
 
-    -- Banner spoof
-    for _, v in pairs(lp.Character:GetDescendants()) do
-        if v:IsA("ImageLabel") and v.Visible and v.AbsoluteSize.X > v.AbsoluteSize.Y then
-            if not originalBannerID then
-                originalBannerID = v.Image
+local function ballboxClearParts()
+    if ballboxTarget and ballboxTarget.Parent and ballboxOrigBallTrans ~= nil then
+        pcall(function() ballboxTarget.Transparency = ballboxOrigBallTrans end)
+    end
+    ballboxOrigBallTrans = nil
+    for _, p in ipairs(ballboxParts) do pcall(function() if p and p.Parent then p:Destroy() end end) end
+    ballboxParts = {}
+end
+
+local function ballboxClearConns()
+    for _, c in ipairs(ballboxConns) do pcall(function() if c then c:Disconnect() end end) end
+    ballboxConns = {}
+end
+
+local function ballboxBuild(ball)
+    ballboxClearParts()
+    local sz = ballboxSize
+    ballboxOrigBallTrans = ball.Transparency
+    local vis = Instance.new("Part")
+    vis.Name = "BallboxVis" vis.Size = Vector3.new(sz,sz,sz)
+    vis.Transparency = 0.55 vis.Color = Color3.fromRGB(0,200,255)
+    vis.Material = Enum.Material.Neon vis.CanCollide = false
+    vis.CanTouch = false vis.Massless = true vis.CastShadow = false
+    vis.Anchored = true vis.CFrame = CFrame.new(ball.Position)
+    vis.Parent = workspace
+    table.insert(ballboxParts, vis)
+    local hitbox = Instance.new("Part")
+    hitbox.Name = "BallboxHitbox" hitbox.Size = Vector3.new(sz*1.6,sz*1.6,sz*1.6)
+    hitbox.Transparency = 1 hitbox.CanCollide = false hitbox.CanTouch = true
+    hitbox.Massless = true hitbox.CastShadow = false hitbox.Anchored = true
+    hitbox.CFrame = CFrame.new(ball.Position) hitbox.Parent = workspace
+    table.insert(ballboxParts, hitbox)
+    local fc = RunService.Heartbeat:Connect(function()
+        if not ball or not ball.Parent then return end
+        local pos = ball.Position
+        if vis    and vis.Parent    then vis.CFrame    = CFrame.new(pos) end
+        if hitbox and hitbox.Parent then hitbox.CFrame = CFrame.new(pos) end
+    end)
+    table.insert(ballboxConns, fc)
+    local ac = ball.AncestryChanged:Connect(function()
+        if not ball.Parent then ballboxClearParts() ballboxTarget = nil end
+    end)
+    table.insert(ballboxConns, ac)
+end
+
+local function ballboxTick()
+    local ball  = cachedFootball
+    local loose = ball and isBallLoose(ball)
+    if not loose then
+        if ballboxTarget then ballboxClearConns() ballboxClearParts() ballboxTarget = nil end
+        return
+    end
+    if ball ~= ballboxTarget then
+        ballboxClearConns() ballboxClearParts()
+        ballboxTarget = ball
+        pcall(function() ballboxBuild(ball) end)
+    else
+        pcall(function()
+            local sz = ballboxSize
+            for _, p in ipairs(ballboxParts) do
+                if p and p.Parent then
+                    if p.Name == "BallboxVis"    then p.Size = Vector3.new(sz,sz,sz) end
+                    if p.Name == "BallboxHitbox" then p.Size = Vector3.new(sz*1.6,sz*1.6,sz*1.6) end
+                end
             end
+        end)
+    end
+end
+
+local function ballboxEnable()
+    ballboxEnabled = true
+    if ballboxThread then pcall(function() task.cancel(ballboxThread) end) end
+    ballboxThread = task.spawn(function()
+        while ballboxEnabled do pcall(ballboxTick) task.wait(0.08) end
+    end)
+    local dc = workspace.DescendantAdded:Connect(function(obj)
+        if ballboxEnabled and obj:IsA("BasePart") and obj.Name == "Football" then task.wait(0.2) pcall(ballboxTick) end
+    end)
+    table.insert(ballboxConns, dc)
+    local cc = LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1.5) if ballboxEnabled then pcall(ballboxTick) end
+    end)
+    table.insert(ballboxConns, cc)
+end
+
+local function ballboxDisable()
+    ballboxEnabled = false
+    if ballboxThread then pcall(function() task.cancel(ballboxThread) end) ballboxThread = nil end
+    ballboxClearConns() ballboxClearParts() ballboxTarget = nil
+end
+
+MainTab:CreateSection("Ball Box")
+
+MainTab:CreateToggle({
+    Name         = "Ball Box",
+    CurrentValue = false,
+    Flag         = "BallboxToggle",
+    Callback     = function(s) if s then ballboxEnable() else ballboxDisable() end end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Box Size",
+    Range        = { 1, 12 },
+    Increment    = 1,
+    CurrentValue = 4,
+    Flag         = "BallboxSize",
+    Callback     = function(v) ballboxSize = v end,
+})
+
+-- ============================================================
+--  STICKY HEAD
+-- ============================================================
+
+local stickyHeadEnabled  = false
+local stickyPullStrength = 2.8
+local stickyStickiness   = 2.0
+local stickyJumpConn     = nil
+local lastStickyTarget   = nil
+local stickyThrottle     = 0
+
+local function closestPlayerForSticky()
+    local nearest, dist = nil, 35
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local hum = p.Character:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health > 0 and rootPart then
+                local d = (hrp.Position - rootPart.Position).Magnitude
+                if d < dist then dist = d nearest = p end
+            end
+        end
+    end
+    return nearest
+end
+
+local function connectStickyJump(target)
+    pcall(function()
+        if stickyJumpConn then stickyJumpConn:Disconnect() end
+        local hum        = target.Character:FindFirstChild("Humanoid")
+        local targetHead = target.Character:FindFirstChild("Head")
+        if not hum or not targetHead then return end
+        stickyJumpConn = hum.Jumping:Connect(function()
+            if not stickyHeadEnabled then return end
+            if humanoid.FloorMaterial ~= Enum.Material.Air then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+            local headPos = targetHead.Position + Vector3.new(0, 2.2, 0)
+            local offset  = headPos - rootPart.Position
+            rootPart.AssemblyLinearVelocity += Vector3.new(
+                offset.Unit.X * (stickyPullStrength * 40), 12,
+                offset.Unit.Z * (stickyPullStrength * 40)
+            )
+        end)
+    end)
+end
+
+RunService.Heartbeat:Connect(function(dt)
+    if not stickyHeadEnabled then return end
+    stickyThrottle = stickyThrottle + dt
+    if stickyThrottle < 0.05 then return end
+    stickyThrottle = 0
+    pcall(function()
+        local target = closestPlayerForSticky()
+        if not target or not target.Character then return end
+        if target ~= lastStickyTarget then
+            lastStickyTarget = target
+            connectStickyJump(target)
+        end
+        local targetHead = target.Character:FindFirstChild("Head")
+        if not targetHead then return end
+        local headPos = targetHead.Position + Vector3.new(0, 1.6, 0)
+        local offset  = headPos - rootPart.Position
+        local dist    = offset.Magnitude
+        local vel     = rootPart.AssemblyLinearVelocity
+        if dist > 2.5 then
+            local desired = offset.Unit * (stickyPullStrength * 14)
+            rootPart.AssemblyLinearVelocity = Vector3.new(vel.X+(desired.X-vel.X)*0.2, vel.Y, vel.Z+(desired.Z-vel.Z)*0.2)
+        end
+        if dist <= 3 then
+            local h = Vector3.new((headPos-rootPart.Position).X, 0, (headPos-rootPart.Position).Z)
+            rootPart.AssemblyLinearVelocity += h.Unit*(stickyStickiness*5)
+        end
+        if dist <= 2 then
+            local bo = headPos - rootPart.Position
+            rootPart.AssemblyLinearVelocity = Vector3.new(bo.X*(stickyStickiness*5), rootPart.AssemblyLinearVelocity.Y, bo.Z*(stickyStickiness*5))
+        end
+        if dist <= 1.2 then
+            local lock = headPos - rootPart.Position
+            rootPart.AssemblyLinearVelocity = Vector3.new(lock.X*(stickyStickiness*6), rootPart.AssemblyLinearVelocity.Y, lock.Z*(stickyStickiness*6))
+        end
+    end)
+end)
+
+MainTab:CreateSection("Sticky Head")
+
+MainTab:CreateToggle({
+    Name         = "Sticky Head",
+    CurrentValue = false,
+    Flag         = "StickyHeadToggle",
+    Callback     = function(s)
+        stickyHeadEnabled = s
+        if not s and stickyJumpConn then stickyJumpConn:Disconnect() stickyJumpConn = nil end
+    end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Pull Strength",
+    Range        = { 1, 40 },
+    Increment    = 1,
+    CurrentValue = 28,
+    Flag         = "StickyPull",
+    Callback     = function(v) stickyPullStrength = v * 0.1 end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Stickiness",
+    Range        = { 1, 40 },
+    Increment    = 1,
+    CurrentValue = 20,
+    Flag         = "StickyStick",
+    Callback     = function(v) stickyStickiness = v * 0.1 end,
+})
+
+-- ============================================================
+--  BOOST W/ BALL
+-- ============================================================
+
+local boostEnabled  = false
+local boostPower    = 25
+local boostCooldown = {}
+
+local function isBallWeldedToPlayer()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Football" then
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("WeldConstraint") or child:IsA("Weld") or child:IsA("Motor6D") then
+                    for _, cp in pairs(char:GetDescendants()) do
+                        if cp:IsA("BasePart") and (child.Part0 == cp or child.Part1 == cp) then return true end
+                    end
+                end
+            end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root and (obj.Position - root.Position).Magnitude < 3.5 then
+                if (obj.AssemblyLinearVelocity - root.AssemblyLinearVelocity).Magnitude < 4 then return true end
+            end
+        end
+    end
+    return false
+end
+
+local function setupBoostDetection()
+    if not rootPart then return end
+    rootPart.Touched:Connect(function(hit)
+        if not boostEnabled then return end
+        if not isBallWeldedToPlayer() then return end
+        local otherPlayer = Players:GetPlayerFromCharacter(hit.Parent)
+        if otherPlayer and otherPlayer ~= LocalPlayer then
+            if boostCooldown[otherPlayer.Name] and tick() - boostCooldown[otherPlayer.Name] < 1 then return end
+            local bv = Instance.new("BodyVelocity")
+            bv.MaxForce = Vector3.new(0, math.huge, 0)
+            bv.Velocity = Vector3.new(0, boostPower, 0)
+            bv.Parent   = rootPart
+            boostCooldown[otherPlayer.Name] = tick()
+            task.delay(0.2, function() if bv and bv.Parent then bv:Destroy() end end)
+        end
+    end)
+end
+setupBoostDetection()
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    rootPart      = char:FindFirstChild("HumanoidRootPart")
+    boostCooldown = {}
+    setupBoostDetection()
+end)
+
+MainTab:CreateSection("Boost W/ Ball")
+
+MainTab:CreateToggle({
+    Name         = "Boost W/ Ball",
+    CurrentValue = false,
+    Flag         = "BoostToggle",
+    Callback     = function(s) boostEnabled = s end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Boost Power",
+    Range        = { 10, 300 },
+    Increment    = 1,
+    CurrentValue = 10,
+    Flag         = "BoostPower",
+    Callback     = function(v) boostPower = v end,
+})
+
+-- ============================================================
+--  FORCE SPEED
+-- ============================================================
+
+local forceSpeedEnabled  = false
+local forceSpeedAmount   = 30
+local forceSpeedDuration = 0.3
+local forceSpeedCooldown = false
+local forceSpeedKeybind  = nil
+local isListeningForKey  = false
+
+MainTab:CreateSection("Force Speed")
+
+MainTab:CreateButton({
+    Name     = "Set Keybind",
+    Callback = function()
+        if isListeningForKey then return end
+        isListeningForKey = true
+        Rayfield:Notify({ Title = "Force Speed", Content = "Press any key or button...", Duration = 3 })
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard
+            or input.UserInputType == Enum.UserInputType.Gamepad1 then
+                forceSpeedKeybind = input.KeyCode
+                isListeningForKey = false
+                conn:Disconnect()
+                Rayfield:Notify({ Title = "Force Speed", Content = "Bound to: " .. input.KeyCode.Name, Duration = 2 })
+            end
+        end)
+    end,
+})
+
+MainTab:CreateToggle({
+    Name         = "Force Speed",
+    CurrentValue = false,
+    Flag         = "ForceSpeedToggle",
+    Callback     = function(s) forceSpeedEnabled = s end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Burst Speed",
+    Range        = { 16, 100 },
+    Increment    = 1,
+    CurrentValue = 30,
+    Flag         = "ForceSpeedAmount",
+    Callback     = function(v) forceSpeedAmount = v end,
+})
+
+MainTab:CreateSlider({
+    Name         = "Burst Duration (x0.1s)",
+    Range        = { 1, 20 },
+    Increment    = 1,
+    CurrentValue = 3,
+    Flag         = "ForceSpeedDuration",
+    Callback     = function(v) forceSpeedDuration = v * 0.1 end,
+})
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if not forceSpeedEnabled then return end
+    if forceSpeedCooldown then return end
+    if isListeningForKey then return end
+    if forceSpeedKeybind == nil then return end
+    if input.KeyCode ~= forceSpeedKeybind then return end
+
+    local char = LocalPlayer.Character
+    local hum  = char and char:FindFirstChild("Humanoid")
+    if not hum then return end
+
+    forceSpeedCooldown = true
+    local baseSpeed    = hum.WalkSpeed
+    hum.WalkSpeed = forceSpeedAmount
+
+    task.delay(forceSpeedDuration, function()
+        local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if h then h.WalkSpeed = LoopSpeed.Enabled and LoopSpeed.Speed or baseSpeed end
+        forceSpeedCooldown = false
+    end)
+end)
+
+-- ============================================================
+--  NAME CHANGER
+-- ============================================================
+
+local customName       = ""
+local processedObjects = {}
+
+local function applyToTextObject(obj)
+    if processedObjects[obj] then return end
+    if customName == "" or #customName < 3 then return end
+    if obj:IsA("TextLabel") or obj:IsA("TextBox") or obj:IsA("TextButton") then
+        local lower = string.lower(obj.Text)
+        if string.find(lower, string.lower(LocalPlayer.Name)) or
+           string.find(lower, string.lower(LocalPlayer.DisplayName)) then
+            obj.Text = customName
+            processedObjects[obj] = true
+            obj:GetPropertyChangedSignal("Text"):Connect(function()
+                if obj.Text ~= customName and customName ~= "" then obj.Text = customName end
+            end)
+        end
+    end
+end
+
+local function applyNameChange()
+    if customName == "" or #customName < 3 then return end
+    for _, v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do pcall(function() applyToTextObject(v) end) end
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
+            for _, child in pairs(v:GetDescendants()) do pcall(function() applyToTextObject(child) end) end
+        end
+    end
+end
+
+LocalPlayer.PlayerGui.DescendantAdded:Connect(function(v)
+    if customName ~= "" and #customName >= 3 then
+        task.defer(function() pcall(function() applyToTextObject(v) end) end)
+    end
+end)
+
+workspace.DescendantAdded:Connect(function(v)
+    if customName ~= "" and #customName >= 3 then
+        if v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
+            task.defer(function() for _, c in pairs(v:GetDescendants()) do pcall(function() applyToTextObject(c) end) end end)
+        end
+        task.defer(function() pcall(function() applyToTextObject(v) end) end)
+    end
+end)
+
+MainTab:CreateSection("Name Changer")
+
+MainTab:CreateInput({
+    Name        = "Display Name",
+    PlaceholderText = "Enter name...",
+    RemoveTextAfterFocusLost = false,
+    Flag        = "NameInput",
+    Callback    = function(v)
+        if #v >= 3 then customName = v processedObjects = {} applyNameChange() end
+    end,
+})
+
+-- ============================================================
+--  BANNERS
+-- ============================================================
+
+local currentBannerID = "rbxassetid://13181356130"
+
+local BANNERS = {
+    ["tiktok"]     = "14308515186",
+    ["yt"]         = "13181356130",
+    ["twitch"]     = "13284240977",
+    ["staff"]      = "13284239964",
+    ["global"]     = "13223858189",
+    ["50m rap"]    = "13200847176",
+    ["50x streak"] = "14123762825",
+}
+
+local bannerThrottle = 0
+RunService.Heartbeat:Connect(function(dt)
+    local char = LocalPlayer.Character
+    if not char then return end
+    bannerThrottle = bannerThrottle + dt
+    if bannerThrottle < 0.1 then return end
+    bannerThrottle = 0
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("ImageLabel") and v.Visible and v.AbsoluteSize.X > v.AbsoluteSize.Y then
             v.Image = currentBannerID
         end
     end
 end)
 
--- [[ NAME SPOOF LOOP ]]
-spawn(function()
-    while wait(0.1) do
-        if nameChangerEnabled then
-            for _, label in pairs(cachedNameLabels) do
-                if label and label.Parent then
-                    label.Text = spoofedName
+-- ============================================================
+--  CLOTHING
+-- ============================================================
+
+local equipped = {}
+local origShirtTemplate, origPantsTemplate = nil, nil
+
+do
+    local char = LocalPlayer.Character
+    local s = char and char:FindFirstChildOfClass("Shirt")
+    local p = char and char:FindFirstChildOfClass("Pants")
+    if s then origShirtTemplate = s.ShirtTemplate end
+    if p then origPantsTemplate = p.PantsTemplate end
+end
+
+local CLOTHING_ITEMS = {
+    ["King Pants"]           = { type = "Pants", assetId = 10725550576     },
+    ["Black Bandana Shorts"] = { type = "Pants", assetId = 15020463274     },
+    ["Allstar Shorts"]       = { type = "Pants", assetId = 73939866847703  },
+    ["King Shirt"]           = { type = "Shirt", assetId = 6296265575      },
+    ["Black World Tour"]     = { type = "Shirt", assetId = 15335037852     },
+    ["Pink World Tour"]      = { type = "Shirt", assetId = 15334978300     },
+    ["White World Tour"]     = { type = "Shirt", assetId = 15334975460     },
+    ["Hooded Jean Jacket"]   = { type = "Shirt", assetId = 15334917844     },
+    ["Grey Flare"]           = { type = "Shirt", assetId = 15345367906     },
+    ["Black Flare"]          = { type = "Shirt", assetId = 15345348842     },
+    ["Red Flare"]            = { type = "Shirt", assetId = 15345347397     },
+    ["Acid Flare"]           = { type = "Shirt", assetId = 15345352095     },
+    ["Pastel Flare"]         = { type = "Shirt", assetId = 15345355082     },
+    ["Orange Flare"]         = { type = "Shirt", assetId = 15345357354     },
+    ["Allstar Shirt"]        = { type = "Shirt", assetId = 104603634169771 },
+}
+
+local function equipClothing(name)
+    pcall(function()
+        if equipped[name] then return end
+        local d = CLOTHING_ITEMS[name] if not d then return end
+        local char = LocalPlayer.Character if not char then return end
+        local idStr = tostring(d.assetId)
+        local applied, appliedParts = false, {}
+        local function tryApply(objects)
+            if not objects then return false end
+            local allItems = {}
+            for _, obj in pairs(objects) do
+                table.insert(allItems, obj)
+                pcall(function() for _, c in pairs(obj:GetDescendants()) do table.insert(allItems, c) end end)
+            end
+            for _, item in pairs(allItems) do
+                if item:IsA("Shirt") and d.type == "Shirt" then
+                    local old = char:FindFirstChildOfClass("Shirt") if old then old:Destroy() end
+                    item.Parent = char table.insert(appliedParts, item) return true
+                end
+                if item:IsA("Pants") and d.type == "Pants" then
+                    local old = char:FindFirstChildOfClass("Pants") if old then old:Destroy() end
+                    item.Parent = char table.insert(appliedParts, item) return true
                 end
             end
-            
-            if tick() - lastNameUpdate > 1 then
-                findNameLabels()
-                lastNameUpdate = tick()
+            return false
+        end
+        local ok, result = pcall(function() return game:GetObjects("rbxassetid://" .. idStr) end)
+        if ok and result and #result > 0 then applied = tryApply(result) end
+        if not applied then
+            local ok2, model = pcall(function() return game:GetService("InsertService"):LoadAsset(d.assetId) end)
+            if ok2 and model then
+                applied = tryApply({model})
+                if model and model.Parent then pcall(function() model:Destroy() end) end
             end
         end
+        if not applied then
+            if d.type == "Shirt" then
+                local old = char:FindFirstChildOfClass("Shirt") if old then old:Destroy() end
+                local s = Instance.new("Shirt") s.Name = name s.ShirtTemplate = "rbxassetid://" .. idStr s.Parent = char
+                table.insert(appliedParts, s)
+            elseif d.type == "Pants" then
+                local old = char:FindFirstChildOfClass("Pants") if old then old:Destroy() end
+                local p = Instance.new("Pants") p.Name = name p.PantsTemplate = "rbxassetid://" .. idStr p.Parent = char
+                table.insert(appliedParts, p)
+            end
+        end
+        if #appliedParts > 0 then equipped[name] = appliedParts end
+    end)
+end
+
+local function unequipItem(name)
+    pcall(function()
+        if not equipped[name] then return end
+        local parts = equipped[name]
+        local hadShirt, hadPants = false, false
+        for _, p in ipairs(parts) do
+            if typeof(p) == "Instance" and p.Parent then
+                if p:IsA("Shirt") then hadShirt = true end
+                if p:IsA("Pants") then hadPants = true end
+                p:Destroy()
+            end
+        end
+        equipped[name] = nil
+        local char = LocalPlayer.Character if not char then return end
+        if hadShirt and origShirtTemplate and not char:FindFirstChildOfClass("Shirt") then
+            local s = Instance.new("Shirt") s.ShirtTemplate = origShirtTemplate s.Parent = char
+        end
+        if hadPants and origPantsTemplate and not char:FindFirstChildOfClass("Pants") then
+            local p = Instance.new("Pants") p.PantsTemplate = origPantsTemplate p.Parent = char
+        end
+    end)
+end
+
+-- ============================================================
+--  VISUALS TAB
+-- ============================================================
+
+VisualsTab:CreateSection("Banners")
+
+for name, id in pairs(BANNERS) do
+    VisualsTab:CreateButton({
+        Name     = name,
+        Callback = function()
+            currentBannerID = "rbxassetid://" .. id
+            Rayfield:Notify({ Title = "Banner", Content = name .. " set", Duration = 2 })
+        end,
+    })
+end
+
+VisualsTab:CreateSection("Shirts")
+
+for name, data in pairs(CLOTHING_ITEMS) do
+    if data.type == "Shirt" then
+        VisualsTab:CreateToggle({
+            Name         = name,
+            CurrentValue = false,
+            Flag         = "Shirt_" .. name,
+            Callback     = function(v) if v then equipClothing(name) else unequipItem(name) end end,
+        })
     end
-end)
+end
+
+VisualsTab:CreateSection("Pants / Shorts")
+
+for name, data in pairs(CLOTHING_ITEMS) do
+    if data.type == "Pants" then
+        VisualsTab:CreateToggle({
+            Name         = name,
+            CurrentValue = false,
+            Flag         = "Pants_" .. name,
+            Callback     = function(v) if v then equipClothing(name) else unequipItem(name) end end,
+        })
+    end
+end
+
+-- ============================================================
+--  ANIMATIONS TAB
+-- ============================================================
+
+local CurrentTrack = nil
+
+local function LoadTrack(id, speed, looped)
+    pcall(function()
+        if CurrentTrack then CurrentTrack:Stop(0) end
+        local animId = "rbxassetid://" .. tostring(id)
+        pcall(function()
+            local result = game:GetObjects("rbxassetid://" .. tostring(id))
+            if result and #result > 0 then
+                local anim = result[1]
+                if anim:IsA("Animation") and anim.AnimationId ~= "" then animId = anim.AnimationId end
+            end
+        end)
+        local newAnim = Instance.new("Animation")
+        newAnim.AnimationId = animId
+        local ok, newTrack = pcall(function() return humanoid:LoadAnimation(newAnim) end)
+        if not ok or not newTrack then return end
+        newTrack.Priority = Enum.AnimationPriority.Action4
+        newTrack:Play(0.1, 1, speed or 1)
+        newTrack.Looped = (looped ~= false)
+        CurrentTrack = newTrack
+    end)
+end
+
+AnimationsTab:CreateSection("Emotes")
+
+local EMOTES = {
+    { title = "BBS",         id = 83690407262789,  speed = 1.35 },
+    { title = "Bop",         id = 8028669437,       speed = 1.1  },
+    { title = "Hackers",     id = 10714364213,      speed = 1    },
+    { title = "HD",          id = 133666867152446,  speed = 1    },
+    { title = "Keep It Hot", id = 98979972129763,   speed = 1    },
+    { title = "CCL",         id = 92859581691366,   speed = 1    },
+    { title = "TTL",         id = 2293391158,       speed = 1    },
+    { title = "Sam Slash",   id = 15249657798,      speed = 1    },
+    { title = "Sturdy",      id = 14215791622,      speed = 1    },
+    { title = "Griddy",      id = 8028694339,       speed = 1    },
+    { title = "Ball Spin",   id = 14215798544,      speed = 1    },
+    { title = "Mop",         id = 14215807283,      speed = 1    },
+    { title = "Headspin",    id = 14920821886,      speed = 1    },
+    { title = "Druski",     id = 14901504235,      speed = 1    },
+    { title = "Smith Micks", id = 15312473847,      speed = 1    },
+    { title = "Moon",        id = 14216002323,      speed = 1    },
+    { title = "Thug Shake",  id = 13550466835,      speed = 1    },
+    { title = "Hacky Sack", id = 14220954146,      speed = 1    },
+    { title = "Gronk Spike", id = 13782932458,      speed = 1    },
+    { title = "Dimension",   id = 5618747341,       speed = 1    },
+    { title = "Goodnight",   id = 15375772247,      speed = 1    },
+}
+
+for _, emote in ipairs(EMOTES) do
+    AnimationsTab:CreateButton({
+        Name     = emote.title,
+        Callback = function() LoadTrack(emote.id, emote.speed) end,
+    })
+end
+
+AnimationsTab:CreateSection("Controls")
+
+AnimationsTab:CreateButton({
+    Name     = "Stop Animation",
+    Callback = function()
+        if CurrentTrack then CurrentTrack:Stop(0) CurrentTrack = nil end
+    end,
+})
+
+-- ============================================================
+--  INIT
+-- ============================================================
 
 Rayfield:Notify({
-    Title = "Metoird Hub Enhanced",
-    Content = "Loaded successfully with full item system!",
-    Duration = 5
+    Title    = "Sennn Hub",
+    Content  = "Loaded successfully!",
+    Duration = 4,
 })
