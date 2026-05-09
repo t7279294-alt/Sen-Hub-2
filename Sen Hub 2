@@ -1,5 +1,5 @@
 -- ============================================================
---  Sennn Hub  |  Rayfield UI
+--  Sennn Hub  |  Rayfield UI  |
 -- ============================================================
 
 local Rayfield = loadstring(game:HttpGet(
@@ -29,8 +29,8 @@ local Window = Rayfield:CreateWindow({
     Name             = "Sennn Hub",
     Icon             = 0,
     LoadingTitle     = "Sennn Hub",
-    LoadingSubtitle  = "By senkotuo",
-    Theme            = "Default",
+    LoadingSubtitle  = "By Senkotuo",
+    Theme            = "Serenity",
     DisableRayfieldPrompts = false,
     DisableBuildWarnings   = false,
     ConfigurationSaving    = { Enabled = false },
@@ -43,20 +43,46 @@ local VisualsTab    = Window:CreateTab("Visuals",    "palette")
 local AnimationsTab = Window:CreateTab("Animations", "music")
 
 -- ============================================================
+--  OPTIMIZED FOOTBALL CACHE (Event-Based)
+-- ============================================================
+
+local cachedFootball = nil
+
+-- Initial scan
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("BasePart") and obj.Name == "Football" then
+        cachedFootball = obj
+        break
+    end
+end
+
+-- Event-based updates (much better performance)
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("BasePart") and obj.Name == "Football" then
+        cachedFootball = obj
+    end
+end)
+
+workspace.DescendantRemoving:Connect(function(obj)
+    if obj == cachedFootball then
+        cachedFootball = nil
+    end
+end)
+
+-- ============================================================
 --  PULL VECTOR
 -- ============================================================
 
 local PV = { Enabled = false, Distance = 8, Strength = 0.01 }
 
 local function FindBall(rootPos)
-    local nearest, nearestDist = nil, PV.Distance
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj.Name == "Football" and obj:IsA("BasePart") then
-            local dist = (obj.Position - rootPos).Magnitude
-            if dist < nearestDist then nearest, nearestDist = obj, dist end
+    if cachedFootball and cachedFootball.Parent then
+        local dist = (cachedFootball.Position - rootPos).Magnitude
+        if dist < PV.Distance then
+            return cachedFootball
         end
     end
-    return nearest
+    return nil
 end
 
 local function InputHeld()
@@ -148,7 +174,7 @@ MainTab:CreateSlider({
 })
 
 -- ============================================================
---  BALLBOX
+--  BALLBOX (OPTIMIZED)
 -- ============================================================
 
 local ballboxEnabled       = false
@@ -158,19 +184,6 @@ local ballboxOrigBallTrans = nil
 local ballboxParts         = {}
 local ballboxConns         = {}
 local ballboxThread        = nil
-local cachedFootball       = nil
-local footballCacheTimer   = 0
-
-RunService.Heartbeat:Connect(function(dt)
-    footballCacheTimer = footballCacheTimer + dt
-    if footballCacheTimer < 0.3 then return end
-    footballCacheTimer = 0
-    local found = nil
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name == "Football" then found = obj break end
-    end
-    cachedFootball = (found and found.Parent) and found or nil
-end)
 
 local function isBallLoose(ball)
     if not ball or not ball.Parent then return false end
@@ -265,14 +278,21 @@ local function ballboxEnable()
     ballboxEnabled = true
     if ballboxThread then pcall(function() task.cancel(ballboxThread) end) end
     ballboxThread = task.spawn(function()
-        while ballboxEnabled do pcall(ballboxTick) task.wait(0.08) end
+        while ballboxEnabled do 
+            pcall(ballboxTick) 
+            task.wait(0.25) -- Increased from 0.08 to 0.25 for better performance
+        end
     end)
     local dc = workspace.DescendantAdded:Connect(function(obj)
-        if ballboxEnabled and obj:IsA("BasePart") and obj.Name == "Football" then task.wait(0.2) pcall(ballboxTick) end
+        if ballboxEnabled and obj:IsA("BasePart") and obj.Name == "Football" then 
+            task.wait(0.2) 
+            pcall(ballboxTick) 
+        end
     end)
     table.insert(ballboxConns, dc)
     local cc = LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1.5) if ballboxEnabled then pcall(ballboxTick) end
+        task.wait(1.5) 
+        if ballboxEnabled then pcall(ballboxTick) end
     end)
     table.insert(ballboxConns, cc)
 end
@@ -302,7 +322,7 @@ MainTab:CreateSlider({
 })
 
 -- ============================================================
---  STICKY HEAD
+--  STICKY HEAD (OPTIMIZED)
 -- ============================================================
 
 local stickyHeadEnabled  = false
@@ -351,7 +371,7 @@ end
 RunService.Heartbeat:Connect(function(dt)
     if not stickyHeadEnabled then return end
     stickyThrottle = stickyThrottle + dt
-    if stickyThrottle < 0.05 then return end
+    if stickyThrottle < 0.1 then return end -- Increased from 0.05 to 0.1
     stickyThrottle = 0
     pcall(function()
         local target = closestPlayerForSticky()
@@ -426,20 +446,19 @@ local boostCooldown = {}
 local function isBallWeldedToPlayer()
     local char = LocalPlayer.Character
     if not char then return false end
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name == "Football" then
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("WeldConstraint") or child:IsA("Weld") or child:IsA("Motor6D") then
-                    for _, cp in pairs(char:GetDescendants()) do
-                        if cp:IsA("BasePart") and (child.Part0 == cp or child.Part1 == cp) then return true end
-                    end
-                end
-            end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root and (obj.Position - root.Position).Magnitude < 3.5 then
-                if (obj.AssemblyLinearVelocity - root.AssemblyLinearVelocity).Magnitude < 4 then return true end
+    local ball = cachedFootball
+    if not ball or not ball.Parent then return false end
+    
+    for _, child in pairs(ball:GetChildren()) do
+        if child:IsA("WeldConstraint") or child:IsA("Weld") or child:IsA("Motor6D") then
+            for _, cp in pairs(char:GetDescendants()) do
+                if cp:IsA("BasePart") and (child.Part0 == cp or child.Part1 == cp) then return true end
             end
         end
+    end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root and (ball.Position - root.Position).Magnitude < 3.5 then
+        if (ball.AssemblyLinearVelocity - root.AssemblyLinearVelocity).Magnitude < 4 then return true end
     end
     return false
 end
@@ -570,7 +589,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ============================================================
---  NAME CHANGER
+--  NAME CHANGER (OPTIMIZED)
 -- ============================================================
 
 local customName       = ""
@@ -630,7 +649,7 @@ MainTab:CreateInput({
 })
 
 -- ============================================================
---  BANNERS
+--  BANNERS (OPTIMIZED)
 -- ============================================================
 
 local currentBannerID = "rbxassetid://13181356130"
@@ -646,17 +665,38 @@ local BANNERS = {
 }
 
 local bannerThrottle = 0
+local bannerCache = {}
+
 RunService.Heartbeat:Connect(function(dt)
     local char = LocalPlayer.Character
     if not char then return end
     bannerThrottle = bannerThrottle + dt
-    if bannerThrottle < 0.1 then return end
+    if bannerThrottle < 0.5 then return end -- Increased from 0.1 to 0.5 for much better performance
     bannerThrottle = 0
-    for _, v in pairs(char:GetDescendants()) do
-        if v:IsA("ImageLabel") and v.Visible and v.AbsoluteSize.X > v.AbsoluteSize.Y then
-            v.Image = currentBannerID
+    
+    -- Only scan if we don't have cached banners
+    if #bannerCache == 0 then
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("ImageLabel") and v.Visible and v.AbsoluteSize.X > v.AbsoluteSize.Y then
+                table.insert(bannerCache, v)
+            end
         end
     end
+    
+    -- Update cached banners
+    for i = #bannerCache, 1, -1 do
+        local v = bannerCache[i]
+        if v and v.Parent then
+            v.Image = currentBannerID
+        else
+            table.remove(bannerCache, i)
+        end
+    end
+end)
+
+-- Clear cache when character is added
+LocalPlayer.CharacterAdded:Connect(function()
+    bannerCache = {}
 end)
 
 -- ============================================================
@@ -776,6 +816,7 @@ for name, id in pairs(BANNERS) do
         Name     = name,
         Callback = function()
             currentBannerID = "rbxassetid://" .. id
+            bannerCache = {} -- Clear cache to force rescan
             Rayfield:Notify({ Title = "Banner", Content = name .. " set", Duration = 2 })
         end,
     })
@@ -851,11 +892,11 @@ local EMOTES = {
     { title = "Ball Spin",   id = 14215798544,      speed = 1    },
     { title = "Mop",         id = 14215807283,      speed = 1    },
     { title = "Headspin",    id = 14920821886,      speed = 1    },
-    { title = "Druski",     id = 14901504235,      speed = 1    },
+    { title = "Druski",      id = 14901504235,      speed = 1    },
     { title = "Smith Micks", id = 15312473847,      speed = 1    },
     { title = "Moon",        id = 14216002323,      speed = 1    },
     { title = "Thug Shake",  id = 13550466835,      speed = 1    },
-    { title = "Hacky Sack", id = 14220954146,      speed = 1    },
+    { title = "Hacky Sack",  id = 14220954146,      speed = 1    },
     { title = "Gronk Spike", id = 13782932458,      speed = 1    },
     { title = "Dimension",   id = 5618747341,       speed = 1    },
     { title = "Goodnight",   id = 15375772247,      speed = 1    },
@@ -883,6 +924,6 @@ AnimationsTab:CreateButton({
 
 Rayfield:Notify({
     Title    = "Sennn Hub",
-    Content  = "Loaded successfully!",
+    Content  = "Loaded successfully with performance improvements!",
     Duration = 4,
 })
